@@ -45,9 +45,8 @@ func (self *JSONWebSignatureSerializer) SetDefault() {
 	self.serializer = (*ser)
 }
 
-func (self JSONWebSignatureSerializer) LoadPayload(payloads string) (interface{}, interface{}, error) {
+func (self JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{}, interface{}, error) {
 	null := []byte("")
-	payload := WantBytes(payloads)
 	sep := []byte(".")
 	if !bytes.Contains(payload, sep) {
 		return null, null, fmt.Errorf("BadPayload: No '.' found in value, %s", payload)
@@ -56,11 +55,11 @@ func (self JSONWebSignatureSerializer) LoadPayload(payloads string) (interface{}
 
 	base64d_header, base64d_payload := v[0], v[1]
 
-	json_header, err := B64decode(string(base64d_header))
+	json_header, err := B64decode(base64d_header)
 	if err != nil {
 		return json_header, null, fmt.Errorf("Could not base64 decode the header because of an exception")
 	}
-	json_payload, err := B64decode(string(base64d_payload))
+	json_payload, err := B64decode(base64d_payload)
 	if err != nil {
 		return null, json_payload, fmt.Errorf("Could not base64 decode the payload because of an exception")
 	}
@@ -82,7 +81,8 @@ func (self JSONWebSignatureSerializer) DumpPayload(header, obj interface{}) []by
 	p, _ := self.Serializer.(JsonAPI).Dump(obj)
 	base64d_payload := B64encode([]byte(p))
 	sep := WantBytes(".")
-	return append(append(WantBytes(base64d_header), sep...), WantBytes(base64d_payload)...)
+	result, _ := Concentrate(WantBytes(base64d_header), sep, WantBytes(base64d_payload))
+	return result
 }
 
 func (self JSONWebSignatureSerializer) MakeSigner() Signer {
@@ -126,7 +126,7 @@ func (self JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}
 	if err != nil {
 		panic(err)
 	}
-	h, payload, err := self.LoadPayload(string(b))
+	h, payload, err := self.LoadPayload(b)
 	header, _ := h.(map[string]interface{})
 	if header["alg"].(string) != self.AlgorithmName {
 		err = fmt.Errorf(`BadHeader: Algorithm mismatch, header:%b, payload=%b`, header, payload)

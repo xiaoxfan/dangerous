@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
-	"time"
-	//"encoding/hex"
 	"fmt"
 	"hash"
+	"time"
 )
+
+var blank_bytes = []byte("")
 
 type Signature interface {
 	GetSignature(key, value []byte) []byte
@@ -19,7 +20,7 @@ type SigningAlgorithm struct {
 }
 
 func (sa SigningAlgorithm) GetSignature(key, value []byte) []byte {
-	return []byte("")
+	return blank_bytes
 }
 func (sa SigningAlgorithm) VerifySignature(key, value, sig []byte) bool {
 	return ByteCompare(sig, sa.GetSignature(key, value))
@@ -29,7 +30,7 @@ type NoneAlgorithm struct {
 	SigningAlgorithm
 }
 
-type HMACAlgorithm struct { // TODO merge function SigningAlgorithm, it seems inheritance issue
+type HMACAlgorithm struct {
 	DigestMethod func() hash.Hash
 }
 
@@ -44,7 +45,7 @@ func (ha HMACAlgorithm) VerifySignature(key, value, sig []byte) bool {
 }
 
 type SignerAPI interface {
-	GetSignature(values string) string
+	GetSignature(value []byte) []byte
 	Sign(value string) []byte
 	VerifySignature(value []byte, sig []byte) bool
 	UnSign(signed_values string) ([]byte, error)
@@ -78,10 +79,10 @@ func (sign *Signer) SetDefault() {
 	sign.SaltBytes = WantBytes(sign.Salt)
 
 	if bytes.Contains(Base64_alphabet, sign.SepBytes) {
-		fmt.Println(
+		panic(
 			"The given separator cannot be used because it may be" +
 				" contained in the signature itself. Alphanumeric" +
-				" characters and `-_=` must not be used.") // TODO become error
+				" characters and `-_=` must not be used.")
 	}
 	if sign.KeyDerivation == "" {
 		sign.KeyDerivation = "django-concat"
@@ -108,14 +109,14 @@ func IsValidStruct(t interface{}) bool {
 func (sign *Signer) DeriveKey() ([]byte, error) {
 
 	if sign.KeyDerivation == "concat" {
-		msg := append(sign.SaltBytes, sign.SecretBytes...)
+		msg, _ := Concentrate(sign.SaltBytes, sign.SecretBytes)
 		funcs := sign.DigestMethod()
 		funcs.Write(msg)
 		return funcs.Sum(nil), nil
 
 	} else if sign.KeyDerivation == "django-concat" {
-		msg := append(sign.SaltBytes, []byte("signer")...)
-		msg = append(msg, sign.SecretBytes...)
+		msg, _ := Concentrate(sign.SaltBytes, []byte("signer"))
+		msg, _ = Concentrate(msg, sign.SecretBytes)
 		funcs := sign.DigestMethod()
 		funcs.Write(msg)
 		return funcs.Sum(nil), nil
@@ -132,31 +133,30 @@ func (sign *Signer) DeriveKey() ([]byte, error) {
 	return []byte("Error"), fmt.Errorf("Unknown key derivation method")
 }
 
-func (sign Signer) GetSignature(values string) string {
-	value := WantBytes(values)
+func (sign Signer) GetSignature(value []byte) []byte {
 	key, err := sign.DeriveKey()
 	if err != nil {
-		fmt.Println("Signer.GetSignature ", err) // TODO become error
+		panic(fmt.Sprintf("Signer.GetSignature: %s.", err))
 	}
 	sig := sign.Algorithm.(Signature).GetSignature(key, value)
-	return B64encode(sig)
+	return WantBytes(B64encode(sig))
 }
 
 func (sign Signer) Sign(value string) []byte {
 	(&sign).SetDefault()
-	msg := append(WantBytes(value), sign.SepBytes...)
-	return append(msg, WantBytes(sign.GetSignature(value))...)
+	value_b := WantBytes(value)
+	msg, _ := Concentrate(value_b, sign.SepBytes)
+	msg, _ = Concentrate(msg, sign.GetSignature(value_b))
+	return msg
 }
 func (sign Signer) VerifySignature(value []byte, sig []byte) bool {
 	(&sign).SetDefault()
 	key, err := sign.DeriveKey()
 	if err != nil {
-		fmt.Println(err) // TODO become error
 		return false
 	}
-	sigb, err := B64decode(string(sig))
+	sigb, err := B64decode(sig)
 	if err != nil {
-		fmt.Println(err) // TODO become error
 		return false
 	}
 	return sign.Algorithm.(Signature).VerifySignature(key, value, sigb)
@@ -167,14 +167,13 @@ func (sign Signer) UnSign(signed_values string) ([]byte, error) {
 	signed_value := WantBytes(signed_values)
 	sep := sign.SepBytes
 	if !bytes.Contains(signed_value, sep) {
-		return []byte(""), fmt.Errorf("BadSignature: No %s found in value", sign.Sep)
+		return blank_bytes, fmt.Errorf("BadSignature: No %s found in value", sign.Sep)
 	}
-	vx := bytes.LastIndex(signed_value, sep)
-	value, sig := signed_value[:vx], signed_value[vx+1:]
+	value, sig := RSplit(signed_value, sep)
 	if sign.VerifySignature(value, sig) {
 		return value, nil
 	}
-	return []byte(""), fmt.Errorf("BadSignature: Signature %s does not match. Value: %s", sig, value)
+	return blank_bytes, fmt.Errorf("BadSignature: Signature %s does not match. Value: %s", sig, value)
 }
 
 func (sign Signer) Validate(signed_value string) bool {
@@ -193,11 +192,11 @@ func (self Signer) get_timestamp() int64 {
 func (self Signer) SignTimestamp(values string) []byte {
 	(&self).SetDefault()
 	value := WantBytes(values)
-	timestamp := B64encode(Int2Bytes(self.get_timestamp()))
+	timestamp := WantBytes(B64encode(Int2Bytes(self.get_timestamp())))
 	sep := WantBytes(self.Sep)
-	value = append(append(value, sep...), timestamp...)
-	fmt.Println(string(value))
-	return append(append(value, sep...), []byte(self.GetSignature(string(value)))...)
+	value, _ = Concentrate(value, sep, timestamp)
+	value, _ = Concentrate(value, sep, self.GetSignature(value))
+	return value
 }
 
 func (self Signer) UnSignTimestamp(values string, max_age int64) ([]byte, error) {
@@ -210,9 +209,8 @@ func (self Signer) UnSignTimestamp(values string, max_age int64) ([]byte, error)
 	if !bytes.Contains(result, sep) {
 		return result, fmt.Errorf("timestamp missing")
 	}
-	vx := bytes.LastIndex(result, sep)
-	value, ts := result[:vx], result[vx+1:]
-	decode, err := B64decode(string(ts))
+	value, ts := RSplit(result, sep)
+	decode, err := B64decode(ts)
 	if err != nil {
 		return value, err
 	}

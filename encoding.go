@@ -15,7 +15,7 @@ func WantBytes(s string, chartype ...interface{}) []byte {
 	}
 	r, err := charset.NewReader(strings.NewReader(s), types)
 	if err != nil {
-		return []byte(s)
+		panic(err)
 	}
 	result, _ := ioutil.ReadAll(r)
 	return []byte(result)
@@ -25,8 +25,8 @@ func B64encode(msg []byte) string {
 	return base64.RawURLEncoding.EncodeToString(msg)
 }
 
-func B64decode(encoded string) ([]byte, error) {
-	decoded, err := base64.RawURLEncoding.DecodeString(encoded)
+func B64decode(encoded []byte) ([]byte, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(string(encoded))
 	return decoded, err
 }
 
@@ -34,7 +34,7 @@ func Bytes2Int(b []byte) int64 {
 	for i := 1; i < 10; i++ {
 		if len(b)/(i*8) < 1 {
 			x00 := make([]byte, i*8-len(b))
-			b = append(x00, b...)
+			b, _ = Concentrate(x00, b)
 			break
 		}
 	}
