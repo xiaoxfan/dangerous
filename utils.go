@@ -8,6 +8,14 @@ import (
 	"reflect"
 )
 
+func ByteCompare(a, b []byte) bool {
+	return bytes.Compare(a, b) == 0
+}
+
+func StrCompare(a, b string) bool {
+	return ByteCompare([]byte(a), []byte(b))
+}
+
 func ApplyKwargs(struct1 interface{}, kwargs map[string]interface{}) error {
 	values1 := reflect.ValueOf(struct1).Elem()
 	if values1.Type().Kind() != reflect.Struct {
@@ -48,8 +56,8 @@ func Concentrate(b ...interface{}) ([]byte, error) {
 func Compress(src []byte) []byte {
 	var in bytes.Buffer
 	w := zlib.NewWriter(&in)
-	defer w.Close()
 	w.Write(src)
+	w.Close()
 	return in.Bytes()
 }
 
@@ -58,5 +66,6 @@ func UnCompress(data []byte) ([]byte, error) {
 	var out bytes.Buffer
 	r, err := zlib.NewReader(b)
 	io.Copy(&out, r)
+	r.Close()
 	return out.Bytes(), err
 }

@@ -73,15 +73,35 @@ func (self Serializer) PreLoads(s string, loadfunc func([]byte, interface{}) (in
 	var result interface{}
 	for _, signer := range self.IterUnSigners() {
 		by, err = signer.(SignerAPI).UnSign(s)
-		if err != nil {
-			return result, err
-		}
 		result, err = loadfunc(by, self.SerializerOP)
-		if err != nil {
-			return result, err
+		if err == nil {
+			// if error is nul that means we unsgin successfully.
+			return result, nil
 		}
 	}
 	return result, err
+}
+
+func (self Serializer) PreTimedDumps(objx interface{}, dumpfunc func(interface{}, interface{}) (string, error)) ([]byte, error) {
+	(&self).SetDefault()
+	payload_dump, err := dumpfunc(objx, self.SerializerOP)
+	rv := self.Signer.SignTimestamp(payload_dump)
+	return rv, err
+}
+
+// totally different from function `PreLoads`
+func (self Serializer) PreTimedLoads(s string, max_age int64, loadfunc func([]byte, interface{}) (interface{}, error)) (interface{}, error) {
+	(&self).SetDefault()
+	for _, signer := range self.IterUnSigners() {
+		base64d, err := signer.(SignerAPI).UnSignTimestamp(s, max_age)
+		if err != nil {
+			return nil, err
+		}
+		payload, err := loadfunc(base64d, self.SerializerOP)
+		return payload, err
+	}
+	return nil, nil
+
 }
 
 func (self Serializer) Dumps(objx interface{}) ([]byte, error) {
@@ -92,17 +112,12 @@ func (self Serializer) Loads(s string) (interface{}, error) {
 	return self.PreLoads(s, LoadPayload)
 }
 
+func (self Serializer) TimedDumps(objx interface{}) ([]byte, error) {
+	return self.PreTimedDumps(objx, DumpPayload)
+}
+
 func (self Serializer) TimedLoads(s string, max_age int64) (interface{}, error) {
-	(&self).SetDefault()
-	for _, signer := range self.IterUnSigners() {
-		base64d, err := signer.(SignerAPI).UnSignTimestamp(s, max_age)
-		if err != nil {
-			return nil, err
-		}
-		payload, err := self.LoadPayload(base64d)
-		return payload, err
-	}
-	return nil, nil
+	return self.PreTimedLoads(s, max_age, LoadPayload)
 }
 
 func (self Serializer) URLSafeDumps(objx interface{}) ([]byte, error) {
@@ -111,6 +126,14 @@ func (self Serializer) URLSafeDumps(objx interface{}) ([]byte, error) {
 
 func (self Serializer) URLSafeLoads(s string) (interface{}, error) {
 	return self.PreLoads(s, URLSafeLoadPayload)
+}
+
+func (self Serializer) URLSafeTimedDumps(objx interface{}) ([]byte, error) {
+	return self.PreTimedDumps(objx, URLSafeDumpPayload)
+}
+
+func (self Serializer) URLSafeTimedLoads(s string, max_age int64) (interface{}, error) {
+	return self.PreTimedLoads(s, max_age, URLSafeLoadPayload)
 }
 
 /*-------------------------------------------------------------------------------*/
@@ -132,6 +155,7 @@ func PreURLSafeLoadPayload(payload []byte) ([]byte, error) {
 		decompress = true
 	}
 	_json, err := B64decode(payload)
+	fmt.Println(string(_json))
 	if err != nil {
 		return _json, fmt.Errorf("Could not base64 decode the payload because of an exception, original_error=%s", err)
 	}
@@ -146,7 +170,6 @@ func PreURLSafeDumpPayload(_json []byte) ([]byte, error) {
 	is_compressed := false
 	compressed := Compress(_json)
 	if len(compressed) < (len(_json) - 1) {
-
 		_json = compressed
 		is_compressed = true
 	}
