@@ -72,7 +72,7 @@ func (self Serializer) PreLoads(s string, loadfunc func([]byte, interface{}) (in
 	var by []byte
 	var result interface{}
 	for _, signer := range self.IterUnSigners() {
-		by, err = signer.(SignerAPI).UnSign(s)
+		by, err = signer.(Signer).UnSign(s)
 		result, err = loadfunc(by, self.SerializerOP)
 		if err == nil {
 			// if error is nul that means we unsgin successfully.
@@ -93,7 +93,7 @@ func (self Serializer) PreTimedDumps(objx interface{}, dumpfunc func(interface{}
 func (self Serializer) PreTimedLoads(s string, max_age int64, loadfunc func([]byte, interface{}) (interface{}, error)) (interface{}, error) {
 	(&self).SetDefault()
 	for _, signer := range self.IterUnSigners() {
-		base64d, err := signer.(SignerAPI).UnSignTimestamp(s, max_age)
+		base64d, err := signer.(Signer).UnSignTimestamp(s, max_age)
 		if err != nil {
 			return nil, err
 		}

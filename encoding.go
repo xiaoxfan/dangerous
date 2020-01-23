@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-func WantBytes(s string, chartype ...interface{}) []byte {
+func WantBytes(str string, chartype ...interface{}) []byte {
 	types := "utf-8"
 	if len(types) == 1 {
 		types = chartype[0].(string)
 	}
-	r, err := charset.NewReader(strings.NewReader(s), types)
+	r, err := charset.NewReader(strings.NewReader(str), types)
 	if err != nil {
 		panic(err)
 	}
@@ -30,20 +30,20 @@ func B64decode(encoded []byte) ([]byte, error) {
 	return decoded, err
 }
 
-func Bytes2Int(b []byte) int64 {
+func Bytes2Int(_byte []byte) int64 {
 	for i := 1; i < 10; i++ {
-		if len(b)/(i*8) < 1 {
-			x00 := make([]byte, i*8-len(b))
-			b, _ = Concentrate(x00, b)
+		if len(_byte)/(i*8) < 1 {
+			x00 := make([]byte, i*8-len(_byte))
+			_byte, _ = Concentrate(x00, _byte)
 			break
 		}
 	}
-	return int64(binary.BigEndian.Uint64(b))
+	return int64(binary.BigEndian.Uint64(_byte))
 }
 
-func Int2Bytes(ints int64) []byte {
+func Int2Bytes(_int int64) []byte {
 	bs := make([]byte, 128)
-	binary.BigEndian.PutUint64(bs, uint64(ints))
+	binary.BigEndian.PutUint64(bs, uint64(_int))
 	return []byte(strings.Replace(string(bs), "\x00", "", -1))
 }
 
