@@ -134,7 +134,7 @@ func (self Signer) GetSignature(value []byte) []byte {
 	return WantBytes(B64encode(sig))
 }
 
-func (self Signer) self(value string) []byte {
+func (self Signer) Sign(value string) []byte {
 	(&self).SetDefault()
 	value_b := WantBytes(value)
 	msg, _ := Concentrate(value_b, self.SepBytes)

@@ -8,15 +8,19 @@ import (
 	"time"
 )
 
-var Jws_algorithms = map[string]interface{}{
-	"HS256": HMACAlgorithm{DigestMethod: sha256.New},
-	"HS384": HMACAlgorithm{DigestMethod: sha512.New384},
-	"HS512": HMACAlgorithm{DigestMethod: sha512.New},
-	"none":  NoneAlgorithm{}}
+var (
+	Jws_algorithms = map[string]interface{}{
+		"HS256": HMACAlgorithm{DigestMethod: sha256.New},
+		"HS384": HMACAlgorithm{DigestMethod: sha512.New384},
+		"HS512": HMACAlgorithm{DigestMethod: sha512.New},
+		"none":  NoneAlgorithm{}}
 
-var Default_algorithm = "HS512"
+	Default_algorithm = "HS512"
 
-var Default_serializer = Json{}
+	Default_serializer = Json{}
+
+	DEFAULT_EXPIRES_IN int64 = 3600
+)
 
 type JSONWebSignatureSerializer struct {
 	serializer    Serializer
@@ -27,11 +31,15 @@ type JSONWebSignatureSerializer struct {
 	Signerkwargs  map[string]interface{}
 	AlgorithmName string
 	Algorithm     Signature
+	Expires_in    int64
 }
 
 func (self *JSONWebSignatureSerializer) SetDefault() {
 	if self.AlgorithmName == "" {
 		self.AlgorithmName = Default_algorithm
+	}
+	if self.Expires_in == 0 {
+		self.Expires_in = DEFAULT_EXPIRES_IN
 	}
 	self.Algorithm = Jws_algorithms[self.AlgorithmName].(Signature)
 	self.Serializer = Json{}
@@ -134,21 +142,8 @@ func (self JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}
 	return header, payload, err
 }
 
-var DEFAULT_EXPIRES_IN int64 = 3600
-
-type TimedJSONWebSignatureSerializer struct {
-	JSONWebSignatureSerializer
-	Expires_in int64
-}
-
-func (self TimedJSONWebSignatureSerializer) SetDefault() {
-	if self.Expires_in == 0 {
-		self.Expires_in = DEFAULT_EXPIRES_IN
-	}
-}
-
-func (self TimedJSONWebSignatureSerializer) MakeHeader(header_fields map[string]interface{}) map[string]interface{} {
-	header := self.JSONWebSignatureSerializer.MakeHeader(header_fields)
+func (self JSONWebSignatureSerializer) TimedMakeHeader(header_fields map[string]interface{}) map[string]interface{} {
+	header := self.MakeHeader(header_fields)
 	iat := self.now()
 	exp := iat + self.Expires_in
 	header["iat"] = iat
@@ -156,19 +151,19 @@ func (self TimedJSONWebSignatureSerializer) MakeHeader(header_fields map[string]
 	return header
 }
 
-func (self TimedJSONWebSignatureSerializer) Dumps(obj interface{}, args ...interface{}) []byte {
+func (self JSONWebSignatureSerializer) TimedDumps(obj interface{}, args ...interface{}) []byte {
 	(&self).SetDefault()
 	header_fields := map[string]interface{}{}
 	if len(args) == 1 {
 		header_fields, _ = args[0].(map[string]interface{})
 	}
-	header := self.MakeHeader(header_fields)
-	return self.JSONWebSignatureSerializer.Dumps(obj, header)
+	header := self.TimedMakeHeader(header_fields)
+	return self.Dumps(obj, header)
 }
 
-func (self TimedJSONWebSignatureSerializer) Loads(s string) (map[string]interface{}, interface{}, error) {
+func (self JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interface{}, interface{}, error) {
 	(&self).SetDefault()
-	header, payload, err := self.JSONWebSignatureSerializer.Loads(s)
+	header, payload, err := self.Loads(s)
 	if err != nil {
 		panic(err)
 	}
@@ -200,6 +195,6 @@ func (self TimedJSONWebSignatureSerializer) Loads(s string) (map[string]interfac
 
 }
 
-func (self TimedJSONWebSignatureSerializer) now() int64 {
+func (self JSONWebSignatureSerializer) now() int64 {
 	return int64(time.Now().Unix())
 }
