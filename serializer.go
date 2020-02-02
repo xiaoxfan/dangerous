@@ -155,7 +155,6 @@ func PreURLSafeLoadPayload(payload []byte) ([]byte, error) {
 		decompress = true
 	}
 	_json, err := B64decode(payload)
-	fmt.Println(string(_json))
 	if err != nil {
 		return _json, fmt.Errorf("Could not base64 decode the payload because of an exception, original_error=%s", err)
 	}

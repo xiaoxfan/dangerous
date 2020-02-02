@@ -132,7 +132,7 @@ func (self JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}
 	signer := self.MakeSigner()
 	b, err := signer.UnSign(s)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 	h, payload, err := self.LoadPayload(b)
 	header, _ := h.(map[string]interface{})
@@ -156,6 +156,7 @@ func (self JSONWebSignatureSerializer) TimedDumps(obj interface{}, args ...inter
 	header_fields := map[string]interface{}{}
 	if len(args) == 1 {
 		header_fields, _ = args[0].(map[string]interface{})
+		fmt.Println("get")
 	}
 	header := self.TimedMakeHeader(header_fields)
 	return self.Dumps(obj, header)
@@ -165,11 +166,11 @@ func (self JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interfac
 	(&self).SetDefault()
 	header, payload, err := self.Loads(s)
 	if err != nil {
-		panic(err)
+		return header, payload, err
 	}
 	headers := header.(map[string]interface{})
-	if ok := headers["exp"]; ok == 0 {
-		panic("Missing expiry date")
+	if ok := headers["exp"]; ok == nil {
+		return headers, payload, fmt.Errorf("BadSignature-Missing expiry date.")
 	}
 
 	int_date_error := fmt.Errorf(`BadHeader-Expiry date is not an IntDate, payload:%v`, payload)
@@ -184,11 +185,7 @@ func (self JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interfac
 	}
 
 	if exp < self.now() {
-		err := fmt.Errorf(`SignatureExpired(
-                "Signature expired",
-                payload=payload,
-                date_signed=self.get_issue_date(header),
-            )`)
+		err := fmt.Errorf(`Signature expired, expired at %s.`, self.Get_issue_date(exp))
 		return headers, payload, err
 	}
 	return headers, payload, nil
@@ -196,5 +193,9 @@ func (self JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interfac
 }
 
 func (self JSONWebSignatureSerializer) now() int64 {
-	return int64(time.Now().Unix())
+	return time.Now().UTC().Unix()
+}
+
+func (self JSONWebSignatureSerializer) Get_issue_date(t int64) string {
+	return fmt.Sprintf("%s", time.Unix(t, 0).UTC())
 }

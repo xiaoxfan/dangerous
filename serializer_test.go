@@ -1,0 +1,5 @@
+package dangerous
+
+import (
+	"testing"
+)
