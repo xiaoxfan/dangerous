@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-var blank_bytes = []byte("")
+var (
+	blank_bytes = []byte("")
+	DefaultSep  = "."
+)
 
 type Signature interface {
 	GetSignature(key, value []byte) []byte
@@ -57,12 +60,15 @@ type Signer struct {
 }
 
 func (self *Signer) SetDefault() {
+	if self.Secret == "" {
+		panic("Signer secret is empty.")
+	}
 	self.SecretBytes = WantBytes(self.Secret)
 	if self.Salt == "" {
 		self.Salt = "itsdangerous.Signer"
 	}
 	if self.Sep == "" {
-		self.Sep = "."
+		self.Sep = DefaultSep
 	}
 	self.SepBytes = WantBytes(self.Sep)
 	self.SaltBytes = WantBytes(self.Salt)
@@ -178,7 +184,7 @@ func (self Signer) Validate(signed_value string) bool {
 }
 
 func (self Signer) get_timestamp() int64 {
-	return int64(time.Now().Unix())
+	return time.Now().UTC().Unix()
 }
 
 func (self Signer) SignTimestamp(values string) []byte {
@@ -191,37 +197,37 @@ func (self Signer) SignTimestamp(values string) []byte {
 	return value
 }
 
-func (self Signer) UnSignTimestamp(values string, max_age int64) ([]byte, error) {
+func (self Signer) UnSignTimestamp(values string, max_age int64) ([]byte, int64, error) {
 	(&self).SetDefault()
 	result, err := self.UnSign(values)
 	if err != nil {
-		return result, err
+		return result, 0, err
 	}
 	sep := WantBytes(self.Sep)
 	if !bytes.Contains(result, sep) {
-		return result, fmt.Errorf("timestamp missing")
+		return result, 0, fmt.Errorf("BadTimeSignature-timestamp missing")
 	}
 	value, ts := RSplit(result, sep)
 	decode, err := B64decode(ts)
 	if err != nil {
-		return value, err
+		return value, 0, fmt.Errorf("BadTimeSignature-%s", err)
 	}
 	timestamp := Bytes2Int(decode)
 	if err != nil {
-		return value, fmt.Errorf("Malformed timestamp")
+		return value, timestamp, fmt.Errorf("BadTimeSignature-Malformed timestamp")
 	}
 	if max_age > 0 {
 		age := self.get_timestamp() - timestamp
 		if age > max_age {
-			return value, fmt.Errorf("Signature age %d > %d seconds", age, max_age)
+			return value, timestamp, fmt.Errorf("SignatureExpired-Signature age %d > %d seconds", age, max_age)
 		}
 	}
-	return value, nil
+	return value, timestamp, nil
 }
 
 func (self Signer) ValidateTimestamp(signed_value string, max_age int64) bool {
 	(&self).SetDefault()
-	_, err := self.UnSignTimestamp(signed_value, max_age)
+	_, _, err := self.UnSignTimestamp(signed_value, max_age)
 	if err != nil {
 		return false
 	}

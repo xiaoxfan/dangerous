@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha512"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -31,10 +32,10 @@ func (self *Serializer) SetDefault() {
 		self.SerializerOP = Json{}
 	}
 	if self.Signer.Secret == "" {
-		self.Signer = Signer{Secret: self.Secret,
-			Salt: self.Salt}
+		self.Signer = Signer{Secret: self.Secret, Salt: self.Salt}
 	}
-	if self.FallbackSigners == nil {
+	ApplyKwargs(&self.Signer, self.Signerkwargs)
+	if len(self.FallbackSigners) == 0 {
 		self.FallbackSigners = default_fallback_signers
 	}
 
@@ -68,18 +69,18 @@ func (self Serializer) PreDumps(objx interface{}, dumpfunc func(interface{}, int
 
 func (self Serializer) PreLoads(s string, loadfunc func([]byte, interface{}) (interface{}, error)) (interface{}, error) {
 	(&self).SetDefault()
-	var err error
-	var by []byte
-	var result interface{}
+	var _err error
+	var _result interface{}
 	for _, signer := range self.IterUnSigners() {
-		by, err = signer.(Signer).UnSign(s)
-		result, err = loadfunc(by, self.SerializerOP)
-		if err == nil {
-			// if error is nul that means we unsgin successfully.
-			return result, nil
+		unsiged, err := signer.(Signer).UnSign(s)
+		if err != nil {
+			continue
 		}
+		result, err := loadfunc(unsiged, self.SerializerOP)
+		_result = result
+		_err = err
 	}
-	return result, err
+	return _result, _err
 }
 
 func (self Serializer) PreTimedDumps(objx interface{}, dumpfunc func(interface{}, interface{}) (string, error)) ([]byte, error) {
@@ -92,15 +93,23 @@ func (self Serializer) PreTimedDumps(objx interface{}, dumpfunc func(interface{}
 // totally different from function `PreLoads`
 func (self Serializer) PreTimedLoads(s string, max_age int64, loadfunc func([]byte, interface{}) (interface{}, error)) (interface{}, error) {
 	(&self).SetDefault()
+	var _payload interface{}
+	var _err error
 	for _, signer := range self.IterUnSigners() {
-		base64d, err := signer.(Signer).UnSignTimestamp(s, max_age)
-		if err != nil {
-			return nil, err
+		base64d, _, err := signer.(Signer).UnSignTimestamp(s, max_age)
+		_err = err
+		if err != nil && !strings.Contains(err.Error(), "BadTimeSignature") && !strings.Contains(err.Error(), "SignatureExpired") {
+
+			continue
 		}
-		payload, err := loadfunc(base64d, self.SerializerOP)
-		return payload, err
+		payload, err_load := loadfunc(base64d, self.SerializerOP)
+		_payload = payload
+		if err_load != nil {
+			_err = fmt.Errorf("%s AND %s", err.Error(), err_load.Error())
+		}
+		break
 	}
-	return nil, nil
+	return _payload, _err
 
 }
 
@@ -140,7 +149,12 @@ func (self Serializer) URLSafeTimedLoads(s string, max_age int64) (interface{}, 
 // Payload functions
 // Ordinary
 func LoadPayload(payload []byte, api interface{}) (interface{}, error) {
-	return api.(JsonAPI).Load(payload)
+	data, err := api.(JsonAPI).Load(payload)
+	if err != nil {
+		err = fmt.Errorf("BadPayload-Could not load the payload because an exception"+
+			" occurred on unserializing the data. origin error=`%s`", err)
+	}
+	return data, err
 }
 
 func DumpPayload(vx interface{}, api interface{}) (string, error) {

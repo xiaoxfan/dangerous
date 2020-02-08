@@ -83,14 +83,20 @@ func (self JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{},
 	return header, payloadr, err
 }
 
-func (self JSONWebSignatureSerializer) DumpPayload(header, obj interface{}) []byte {
-	h, _ := self.Serializer.(JsonAPI).Dump(header)
+func (self JSONWebSignatureSerializer) DumpPayload(header, obj interface{}) ([]byte, error) {
+	h, err := self.Serializer.(JsonAPI).Dump(header)
+	if err != nil {
+		return blank_bytes, err
+	}
 	base64d_header := B64encode([]byte(h))
-	p, _ := self.Serializer.(JsonAPI).Dump(obj)
+	p, err := self.Serializer.(JsonAPI).Dump(obj)
+	if err != nil {
+		return blank_bytes, err
+	}
 	base64d_payload := B64encode([]byte(p))
 	sep := WantBytes(".")
-	result, _ := Concentrate(WantBytes(base64d_header), sep, WantBytes(base64d_payload))
-	return result
+	result, err := Concentrate(WantBytes(base64d_header), sep, WantBytes(base64d_payload))
+	return result, err
 }
 
 func (self JSONWebSignatureSerializer) MakeSigner() Signer {
@@ -116,7 +122,7 @@ func (self JSONWebSignatureSerializer) MakeHeader(header_fields map[string]inter
 
 }
 
-func (self JSONWebSignatureSerializer) Dumps(obj interface{}, args ...interface{}) []byte {
+func (self JSONWebSignatureSerializer) Dumps(obj interface{}, args ...interface{}) ([]byte, error) {
 	(&self).SetDefault()
 	header_fields := map[string]interface{}{}
 	if len(args) == 1 {
@@ -124,7 +130,11 @@ func (self JSONWebSignatureSerializer) Dumps(obj interface{}, args ...interface{
 	}
 	header := self.MakeHeader(header_fields)
 	signer := self.MakeSigner()
-	return signer.Sign(string(self.DumpPayload(header, obj)))
+	payload, err := self.DumpPayload(header, obj)
+	if err != nil {
+		return payload, err
+	}
+	return signer.Sign(string(payload)), nil
 }
 
 func (self JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}, error) {
@@ -151,7 +161,7 @@ func (self JSONWebSignatureSerializer) TimedMakeHeader(header_fields map[string]
 	return header
 }
 
-func (self JSONWebSignatureSerializer) TimedDumps(obj interface{}, args ...interface{}) []byte {
+func (self JSONWebSignatureSerializer) TimedDumps(obj interface{}, args ...interface{}) ([]byte, error) {
 	(&self).SetDefault()
 	header_fields := map[string]interface{}{}
 	if len(args) == 1 {
@@ -166,7 +176,7 @@ func (self JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interfac
 	(&self).SetDefault()
 	header, payload, err := self.Loads(s)
 	if err != nil {
-		return header, payload, err
+		return nil, payload, err
 	}
 	headers := header.(map[string]interface{})
 	if ok := headers["exp"]; ok == nil {
