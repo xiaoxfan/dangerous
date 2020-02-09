@@ -1,6 +1,7 @@
 package dangerous
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -44,13 +45,15 @@ var (
 		state bool
 	}{
 		{0, []byte{0}, true},
-		{18446744073709551615, []byte{255, 255, 255, 255, 255, 255, 255, 255}, true},
+		{4102444800, []byte{244, 134, 87, 0}, true},                                 // 01/01/2100 @ 12:00am (UTC)
+		{35659353600, []byte{8, 77, 118, 142, 0}, true},                             // 01/01/3100 @ 12:00am (UTC)
+		{9223372036854775807, []byte{127, 255, 255, 255, 255, 255, 255, 255}, true}, // max int64
 	}
 )
 
 func TestString2Bytes(t *testing.T) {
 	for _, valid := range valid_bytes {
-		if valid.out != WantBytes(valid.in) {
+		if !bytes.Equal(valid.out, WantBytes(valid.in)) {
 			t.Fatalf("Convert string to bytes failded, Input:('%s')", valid.in)
 		}
 	}
@@ -64,9 +67,13 @@ func TestString2Bytes(t *testing.T) {
 func TestB64(t *testing.T) {
 	for _, valid := range valid_b64 {
 		if result, err := B64decode(valid.out); err == nil {
-			if (result == valid.in) != valid.state {
+			if bytes.Equal(result, valid.in) != valid.state {
 				t.Fatalf("Base64 decode failed, Input:%s", string(valid.out))
 			}
+
+		} else if err != nil && bytes.Contains(valid.out, []byte("=")) {
+			continue
+
 		} else {
 			t.Fatalf("Base64 decode failed, Input:%s. Error:%s", string(valid.out), err)
 		}
@@ -75,7 +82,7 @@ func TestB64(t *testing.T) {
 
 func TestI2B(t *testing.T) {
 	for _, valid := range valid_intbyte {
-		if result := Int2Bytes(valid._int); (result == valid._byte) != valid.state {
+		if result := Int2Bytes(valid._int); bytes.Equal(result, valid._byte) != valid.state {
 			t.Fatalf("Convert Int to Bytes failed, Input:%d.", valid._int)
 		}
 	}
@@ -83,9 +90,8 @@ func TestI2B(t *testing.T) {
 
 func TestB2I(t *testing.T) {
 	for _, valid := range valid_intbyte {
-		Bytes2Int
 		if result := Bytes2Int(valid._byte); (result == valid._int) != valid.state {
-			t.Fatalf("Convert Bytes to Int failed, Input:%s.", string(valid._byte))
+			t.Fatalf("Convert Bytes to Int failed, Input:%v, Output:%d, Excepted:%d.", valid._byte, result, valid._int)
 		}
 	}
 

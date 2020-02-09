@@ -3,24 +3,24 @@ package dangerous
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/sha512"
-	"cyrpto/sha256"
 	"strings"
 	"testing"
 	"time"
 )
 
 var (
-	ser   = Serializer{Secret: "secret_key"}
-	value = "value"
+	serializer = Serializer{Secret: "secret_key"}
+	value      = "value"
 )
 
 func Test_serializer(t *testing.T) {
-	dump, err := ser.Dumps(value)
+	dump, err := serializer.Dumps(value)
 	if err != nil {
-		t.Fatalf(err)
+		t.Fatalf(err.Error())
 	}
-	if load, err := ser.Loads(dump); load.(string) != value || err != nil {
+	if load, err := serializer.Loads(string(dump)); load.(string) != value || err != nil {
 		t.Fatalf("Loading failed. Error:%s", err)
 	}
 }
@@ -30,67 +30,64 @@ func Test_changed_value(t *testing.T) {
 	for _, _func := range []funcstring{
 		func(s string) string { return strings.ToUpper(s) },
 		func(s string) string { return s + "a" },
-		func(s string) string { return a + s[1:] },
+		func(s string) string { return s + s[1:] },
 		func(s string) string { return strings.Replace(s, ".", "", -1) },
 	} {
-		signed := ser.Dumps(value)
-		if load, err := ser.Loads(signed); load.(string) != value || err != nil {
+		signed, _ := serializer.Dumps(value)
+		if load, err := serializer.Loads(string(signed)); load.(string) != value || err != nil {
 			t.Fatalf("Loading failed. Error:%s", err)
 		}
-		changed := _func(signed)
-		if _, err := ser.Loads(changed); !strings.Contains(err, "BadSignature") {
-			t.Fatalf("Loading failed, because of unexpected error:%s. Expected:BadSignature.", err)
+		changed := _func(string(signed))
+		if _, err := serializer.Loads(changed); !strings.Contains(err.Error(), "BadSignature") {
+			t.Fatalf("Loading failed, because of unexpected error:%s. Expected:BadSignature.", err.Error())
 		}
 	}
 }
 
 func Test_bad_signature_exception(t *testing.T) {
-	dump, err := ser.Dumps(value)
+	dump, _ := serializer.Dumps(value)
 	bad_signed := dump[:len(dump)-1]
-	if load, err := ser.Loads(bad_signed); !strings.Contains(err, "BadSignature") {
-		t.Fatalf("Loading failed, because of unexpected error:`%s`. Expected:BadSignature.", err)
-	} else if load.(string) != value {
-		t.Fatalf("Loading failed.")
+	if _, err := serializer.Loads(string(bad_signed)); !strings.Contains(err.Error(), "BadSignature") {
+		t.Fatalf("Loading failed, because of unexpected error:`%s`. Expected:BadSignature.", err.Error())
 	}
 }
 
 func Test_bad_payload_exception(t *testing.T) {
-	original, _ := ser.Dumps([]byte("123"))
+	original, _ := serializer.Dumps(value)
 	payload, _ := RSplit(original, []byte("."))
-	bad := Signer{Secret: "abc"}.Sign(string(payload[:len(payload)-1]))
-
-	if _, err := ser.Loads(string(bad)); !strings.Contains(err, "BadPayload") {
+	bad := Signer{Secret: "secret_key", Salt: "itsdangerous"}.Sign(string(payload[:len(payload)-1]))
+	if _, err := serializer.Loads(string(bad)); !strings.Contains(err.Error(), "BadPayload") {
 		t.Fatalf("Test_bad_payload_exception failed, because of unexpected error.")
 	}
 }
 
 func Test_alt_salt(t *testing.T) {
-	ser.Salt = "fresh"
-	original, _ := ser.Dumps("123")
+	serializer.Salt = "fresh"
+	original, _ := serializer.Dumps("123")
 
-	if _, err := ser.Loads(string(original)); err != nil {
-		t.Fatalf()
+	if _, err := serializer.Loads(string(original)); err != nil {
+		t.Fatalf(err.Error())
 	}
 
-	ser.Salt = "changed"
-	if _, err := ser.Loads(string(original)); !strings.Contains(err, "BadSignature") {
-		t.Fatalf()
+	serializer.Salt = "changed"
+	if _, err := serializer.Loads(string(original)); !strings.Contains(err.Error(), "BadSignature") {
+		t.Fatalf(err.Error())
 	}
-	ser.Salt = ""
+	serializer.Salt = ""
 }
 
 func Test_signer_kwargs(t *testing.T) {
 	_ser := Serializer{Secret: "secret_key", Signerkwargs: map[string]interface{}{"KeyDerivation": "hmac"}}
 	dump, err := _ser.Dumps(value)
 	if err != nil {
-		t.Fatalf(err)
+		t.Fatalf(err.Error())
 	}
 	if load, err := _ser.Loads(string(dump)); load.(string) != value || err != nil {
-		t.Fatalf("Loading failed. Error:%s", err)
+		t.Fatalf("Loading failed. Error:%s", err.Error())
 	}
-	dump2, err2 := ser.Dumps(value)
+	dump2, err2 := serializer.Dumps(value)
 	if err2 != nil {
-		t.Fatalf(err2)
+		t.Fatalf(err2.Error())
 	}
 	if bytes.Equal(dump, dump2) {
 		t.Fatalf("Can not be the same value.")
@@ -111,7 +108,7 @@ func Test_fallback_signers(t *testing.T) {
 
 	dump2, err2 := serializer2.Loads(string(dump))
 	if err2 != nil {
-		t.Fatalf(err2)
+		t.Fatalf(err2.Error())
 	}
 	if dump2.(string) != value {
 		t.Fatalf("Should be the same value.")
@@ -147,13 +144,13 @@ func Test_digests(t *testing.T) {
 
 // Timed
 func Test_max_age(t *testing.T) {
-	signed, _ := ser.TimedDumps(value)
-	_, err := ser.TimedLoads(string(signed), 10)
+	signed, _ := serializer.TimedDumps(value)
+	_, err := serializer.TimedLoads(string(signed), 10)
 	if err != nil {
 		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
 	}
-	time.Sleep(10 * time.Second)
-	payload, err2 := ser.TimedLoads(string(signed), 8)
+	time.Sleep(2 * time.Second)
+	payload, err2 := serializer.TimedLoads(string(signed), 1)
 	if err2 == nil {
 		t.Fatalf("Load failed. Did not receive expected error.")
 	}
@@ -219,23 +216,26 @@ func Test_url_digests(t *testing.T) {
 
 func Test_timedurl_digests(t *testing.T) {
 	tser := Serializer{Secret: "dev key", Salt: "dev salt"}
+
 	tryload := `InZhbHVlIg.Xjz2MQ.jMZtbnQCgTRbNpCOwQfOq6GW2qM`
+	tser.Signerkwargs = map[string]interface{}{"DigestMethod": sha1.New}
 	payload, err := tser.URLSafeTimedLoads(tryload, 0)
 	if payload.(string) != value || !strings.Contains(err.Error(), "SignatureExpired") {
-		t.Fatalf("Load failed. Unexpected payload.")
+		t.Fatalf("Load failed. Unexpected payload or error.")
 	}
 
 	tryload = `InZhbHVlIg.Xjz2JQ.L0cc1AQhoRx5efnPBu6gXwaYV0Onr5Rm_wFRjdDWJeg`
+	tser.Signerkwargs = map[string]interface{}{"DigestMethod": sha256.New}
 	payload, err = tser.URLSafeTimedLoads(tryload, 0)
-	if payload != nil || !strings.Contains(err.Error(), "BadSignature") {
-		t.Fatalf("Load failed. Unexpected payload.")
+	if payload.(string) != value || !strings.Contains(err.Error(), "SignatureExpired") {
+		t.Fatalf("Load failed. Unexpected payload or error.")
 	}
 
 	tryload = `InZhbHVlIg.Xjz14A.w69pHzxjZFMg6j8459Dqy-3GqryhHCNrhEW9oFs-cnBNcjyOM_a-y9cmHuMeReXYyxuzFYl8XjJ5xEt1hJqQ2Q`
 	tser.Signerkwargs = map[string]interface{}{"DigestMethod": sha512.New}
 	payload, err = tser.URLSafeTimedLoads(tryload, 0)
 	if payload.(string) != value || !strings.Contains(err.Error(), "SignatureExpired") {
-		t.Fatalf("Load failed. Unexpected payload.")
+		t.Fatalf("Load failed. Unexpected payload or error.")
 	}
 
 }

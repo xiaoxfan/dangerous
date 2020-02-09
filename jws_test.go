@@ -15,7 +15,7 @@ func Test_algorithm(t *testing.T) {
 		_jws := jws
 		_jws.AlgorithmName = alg
 		data, _ := _jws.Dumps("value")
-		if _, payload, err := _jws.Loads(data); payload.(string) != "value" || err != nil {
+		if _, payload, err := _jws.Loads(string(data)); payload.(string) != "value" || err != nil {
 			t.Fatalf("Algorithm is not available when inputed valid algorithm name. Algorithm:%s.", alg)
 		}
 	}
@@ -24,19 +24,14 @@ func Test_algorithm(t *testing.T) {
 func Test_invalid_algorithm(t *testing.T) {
 	_jws := jws
 	_jws.AlgorithmName = "not exist"
-	payload, _ := _jws.Dumps("value")
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("Algorithm is available when inputed invalid algorithm name.")
-		}
-	}()
+	_jws.Dumps("value")
 }
 
 func Test_algorithm_mismatch(t *testing.T) {
 	other := jws
 	other.AlgorithmName = "HS256"
 	signed, _ := other.Dumps("value")
-	if _, _, err := jws.Loads(signed); err == nil {
+	if _, _, err := jws.Loads(string(signed)); err == nil {
 		t.Fatalf("Algorithm matched but expectation is mismatch.")
 	}
 }
@@ -62,7 +57,8 @@ func Test_load_payload_exceptions(t *testing.T) {
 }
 
 func Test_exp(t *testing.T) {
-	signed := jws.TimedDumps("value")
+	jws.Expires_in = 8
+	signed, _ := jws.TimedDumps("value")
 	_, _, err := jws.TimedLoads(string(signed))
 	if err != nil {
 		t.Fatalf("Unexpected error occured when loads data. Error:%s", err.Error())
@@ -72,8 +68,8 @@ func Test_exp(t *testing.T) {
 	if err2 == nil {
 		t.Fatalf("Load failed. Did not receive expected error.")
 	}
-	if value.(string) == "value" {
-		t.Fatalf("Load failed. Incorrect output.")
+	if value.(string) != "value" {
+		t.Fatalf("Load failed. Incorrect output. %v", value)
 	}
 }
 
@@ -88,7 +84,7 @@ func Test_missing_exp(t *testing.T) {
 
 	_, _, err := jws.TimedLoads(string(signed))
 	if !strings.Contains(err.Error(), `BadSignature`) {
-		t.Fatalf("Load failed. Incorrect error: err", err.Error())
+		t.Fatalf("Load failed. Incorrect error: err%s", err.Error())
 	}
 
 }
@@ -100,7 +96,7 @@ func Test_invalid_exp(t *testing.T) {
 
 	_, _, err := jws.TimedLoads(string(signed))
 	if !strings.Contains(err.Error(), `BadHeader`) {
-		t.Fatalf("Load failed. Incorrect error: err", err.Error())
+		t.Fatalf("Load failed. Incorrect error: err%s", err.Error())
 	}
 
 }

@@ -13,7 +13,8 @@ var (
 		"HS256": HMACAlgorithm{DigestMethod: sha256.New},
 		"HS384": HMACAlgorithm{DigestMethod: sha512.New384},
 		"HS512": HMACAlgorithm{DigestMethod: sha512.New},
-		"none":  NoneAlgorithm{}}
+		"none":  SigningAlgorithm{},
+	}
 
 	Default_algorithm = "HS512"
 
@@ -41,7 +42,13 @@ func (self *JSONWebSignatureSerializer) SetDefault() {
 	if self.Expires_in == 0 {
 		self.Expires_in = DEFAULT_EXPIRES_IN
 	}
-	self.Algorithm = Jws_algorithms[self.AlgorithmName].(Signature)
+	alg := Jws_algorithms[self.AlgorithmName]
+	if alg == nil {
+		self.AlgorithmName = Default_algorithm
+		alg = Jws_algorithms[self.AlgorithmName]
+		fmt.Println("Invalid_algorithm! Now we will use default algorithm. HS256.")
+	}
+	self.Algorithm = alg.(Signature)
 	self.Serializer = Json{}
 	ser := &Serializer{
 		Secret:       self.Secret,
@@ -147,7 +154,7 @@ func (self JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}
 	h, payload, err := self.LoadPayload(b)
 	header, _ := h.(map[string]interface{})
 	if header["alg"].(string) != self.AlgorithmName {
-		err = fmt.Errorf(`BadHeader: Algorithm mismatch, header:%b, payload=%b`, header, payload)
+		err = fmt.Errorf(`BadHeader: Algorithm mismatch, header:%v, payload=%v`, header, payload)
 	}
 	return header, payload, err
 }

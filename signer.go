@@ -23,14 +23,10 @@ type SigningAlgorithm struct {
 }
 
 func (sa SigningAlgorithm) GetSignature(key, value []byte) []byte {
-	return blank_bytes
+	return []byte{} // panic if empty
 }
 func (sa SigningAlgorithm) VerifySignature(key, value, sig []byte) bool {
 	return ByteCompare(sig, sa.GetSignature(key, value))
-}
-
-type NoneAlgorithm struct {
-	SigningAlgorithm
 }
 
 type HMACAlgorithm struct {
@@ -74,10 +70,10 @@ func (self *Signer) SetDefault() {
 	self.SaltBytes = WantBytes(self.Salt)
 
 	if bytes.Contains(Base64_alphabet, self.SepBytes) {
-		panic(
+		fmt.Println(
 			"The given separator cannot be used because it may be" +
 				" contained in the signature itself. Alphanumeric" +
-				" characters and `-_=` must not be used.")
+				" characters and `-_=` must not be used. Now we set Sep to DefaultSep(.)")
 	}
 	if self.KeyDerivation == "" {
 		self.KeyDerivation = "django-concat"
@@ -96,7 +92,7 @@ func IsValidStruct(t interface{}) bool {
 	case HMACAlgorithm:
 		return true
 
-	case NoneAlgorithm:
+	case SigningAlgorithm:
 		return true
 
 	default:
@@ -216,7 +212,7 @@ func (self Signer) UnSignTimestamp(values string, max_age int64) ([]byte, int64,
 	if err != nil {
 		return value, timestamp, fmt.Errorf("BadTimeSignature-Malformed timestamp")
 	}
-	if max_age > 0 {
+	if max_age >= 0 {
 		age := self.get_timestamp() - timestamp
 		if age > max_age {
 			return value, timestamp, fmt.Errorf("SignatureExpired-Signature age %d > %d seconds", age, max_age)

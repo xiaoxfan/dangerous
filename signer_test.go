@@ -2,7 +2,7 @@ package dangerous
 
 import (
 	"bytes"
-	"crypto/sha384"
+	"crypto/sha512"
 	"strings"
 	"testing"
 	"time"
@@ -16,10 +16,10 @@ var (
 func Test_signer(t *testing.T) {
 	signed := signer.Sign(value)
 	if !signer.Validate(string(signed)) {
-		t.Fatalf()
+		t.Fatalf("Validate failed.")
 	}
 	if unsigned, err := signer.UnSign(string(signed)); err != nil || string(unsigned) != value {
-		t.Fatalf()
+		t.Fatalf("Unsign failed.")
 	}
 }
 
@@ -27,10 +27,10 @@ func Test_no_separator(t *testing.T) {
 	signed := signer.Sign(value)
 	signed = bytes.Replace(signed, []byte(DefaultSep), []byte("*"), -1)
 	if signer.Validate(string(signed)) {
-		t.Fatalf()
+		t.Fatalf("Validate failed.")
 	}
 	if _, err := signer.UnSign(string(signed)); !strings.Contains(err.Error(), "BadSignature") {
-		t.Fatalf()
+		t.Fatalf("Unsign failed.")
 	}
 }
 
@@ -39,57 +39,52 @@ func Test_broken_signature(t *testing.T) {
 	signed = signed[:len(signed)-1]
 	_, bad_sig := RSplit(signed, []byte(DefaultSep))
 	if signer.VerifySignature([]byte(value), bad_sig) {
-		t.Fatalf()
+		t.Fatalf("Verify Signature failed.")
 	}
 	if _, err := signer.UnSign(string(signed)); !strings.Contains(err.Error(), "BadSignature") {
-		t.Fatalf()
+		t.Fatalf("Unsign failed.")
 	}
 }
 
 func Test_changed_value(t *testing.T) {
 	signed := signer.Sign(value)
 	signed = bytes.Replace(signed, []byte("v"), []byte("V"), 1)
-	if signer.VerifySignature([]byte(value), bad_sig) {
-		t.Fatalf()
+	if signer.VerifySignature([]byte(value), signed) {
+		t.Fatalf("Verify Signature failed.")
 	}
 	if _, err := signer.UnSign(string(signed)); !strings.Contains(err.Error(), "BadSignature") {
-		t.Fatalf()
+		t.Fatalf("Unsign failed.")
 	}
 }
 
 func Test_invalid_separator(t *testing.T) {
-	_signer = Signer{Secret: "secret-key", Sep: "-"}
-	signer.Sign(value)
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("Recovered in panic:%s.", r)
-		}
-	}()
+	_signer := Signer{Secret: "secret-key", Sep: "-"}
+	_signer.Sign(value)
 }
 
 func Test_key_derivation(t *testing.T) {
 	for _, i := range []string{"concat", "django-concat", "hmac", "none"} {
-		_signer = Signer{Secret: "secret-key", KeyDerivation: i}
+		_signer := Signer{Secret: "secret-key", KeyDerivation: i}
 		signed := _signer.Sign(value)
 		if v, err := _signer.UnSign(string(signed)); err != nil || string(v) != value {
-			t.Fatalf()
+			t.Fatalf("Unsign failed.")
 		}
 	}
 }
 
 func Test_invalid_key_derivation(t *testing.T) {
-	_signer = Signer{Secret: "secret-key", KeyDerivation: "inv"}
+	_signer := Signer{Secret: "secret-key", KeyDerivation: "inv"}
 	_, err := _signer.DeriveKey()
 	if err == nil {
-		t.Fatalf()
+		t.Fatalf("Using invalid algorithm, but script is still running")
 	}
 }
 
 func Test_digest_method(t *testing.T) {
-	_signer = Signer{Secret: "secret-key", DigestMethod: sha384.New}
+	_signer := Signer{Secret: "secret-key", DigestMethod: sha512.New384}
 	signed := _signer.Sign(value)
 	if v, err := _signer.UnSign(string(signed)); err != nil || string(v) != value {
-		t.Fatalf()
+		t.Fatalf("Unsign failed.")
 	}
 }
 
@@ -102,7 +97,7 @@ func (re _ReverseAlgorithm) VerifySignature(key, value, sig []byte) bool {
 }
 
 func (re _ReverseAlgorithm) GetSignature(key, value []byte) (a []byte) {
-	a = append(key, value)
+	a = append(key, value...)
 	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
 		a[left], a[right] = a[right], a[left]
 	}
@@ -111,52 +106,52 @@ func (re _ReverseAlgorithm) GetSignature(key, value []byte) (a []byte) {
 
 func Test_algorithm(t *testing.T) {
 
-	for _, i := range []interface{}{nil, NoneAlgorithm{}, HMACAlgorithm{}, _ReverseAlgorithm} {
-		_signer = Signer{Secret: "secret-key", Algorithm: i}
+	for _, i := range []Signature{SigningAlgorithm{}, HMACAlgorithm{DigestMethod: sha512.New}, _ReverseAlgorithm{}} {
+		_signer := Signer{Secret: "secret-key", Algorithm: i}
 		signed := _signer.Sign(value)
 		if v, err := _signer.UnSign(string(signed)); err != nil || string(v) != value {
-			t.Fatalf()
+			t.Fatalf("Unsign failed.")
 		}
 	}
 }
 
 // timed
 func Test_max_age(t *testing.T) {
-	signed, _ := signer.SignTimestamp(value)
-	_, _, err := signer.UnSignTimestamp(string(signed), 10)
+	signed := signer.SignTimestamp(value)
+	_, _, err := signer.UnSignTimestamp(string(signed), 2)
 	if err != nil {
 		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
 	}
-	time.Sleep(10 * time.Second)
-	payload, _, err2 := signer.UnSignTimestamp(string(signed), 8)
+	time.Sleep(2 * time.Second)
+	payload, _, err2 := signer.UnSignTimestamp(string(signed), 1)
 	if err2 == nil {
 		t.Fatalf("Load failed. Did not receive expected error.")
 	}
-	if payload.(string) != value {
+	if string(payload) != value {
 		t.Fatalf("Load failed. Unexpected payload.")
 	}
 }
 
 func Test_return_timestamp(t *testing.T) {
-	signed, _ := signer.SignTimestamp(value)
+	signed := signer.SignTimestamp(value)
 	_, ts, err := signer.UnSignTimestamp(string(signed), 0)
-	if err != nil || time.Now().UTC().UTC()-ts > 5 {
-		t.Fatalf()
+	if err != nil || time.Now().UTC().Unix()-ts > 5 {
+		t.Fatalf("Cant not get the timestamp")
 	}
 }
 
 func Test_timestamp_missing(t *testing.T) {
-	signed, _ := signer.Sign(value)
-	_, err := signer.SignTimestamp(string(signed))
-	if err != nil {
+	signed := signer.Sign(value)
+	_, _, err := signer.UnSignTimestamp(string(signed), 10)
+	if !strings.Contains(err.Error(), "BadTimeSignature") {
 		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
 	}
 }
 
 func Test_malformed_timestamp(t *testing.T) {
-	signed, _ := signer.Sign(value + ".____________")
-	_, err := signer.SignTimestamp(string(signed))
-	if err != nil {
+	signed := signer.Sign(value + ".____________")
+	_, _, err := signer.UnSignTimestamp(string(signed), 10)
+	if !strings.Contains(err.Error(), "SignatureExpired") {
 		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
 	}
 }

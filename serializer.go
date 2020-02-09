@@ -73,12 +73,14 @@ func (self Serializer) PreLoads(s string, loadfunc func([]byte, interface{}) (in
 	var _result interface{}
 	for _, signer := range self.IterUnSigners() {
 		unsiged, err := signer.(Signer).UnSign(s)
-		if err != nil {
+		_err = err
+		if _err != nil {
 			continue
 		}
 		result, err := loadfunc(unsiged, self.SerializerOP)
 		_result = result
 		_err = err
+		break
 	}
 	return _result, _err
 }
@@ -99,7 +101,6 @@ func (self Serializer) PreTimedLoads(s string, max_age int64, loadfunc func([]by
 		base64d, _, err := signer.(Signer).UnSignTimestamp(s, max_age)
 		_err = err
 		if err != nil && !strings.Contains(err.Error(), "BadTimeSignature") && !strings.Contains(err.Error(), "SignatureExpired") {
-
 			continue
 		}
 		payload, err_load := loadfunc(base64d, self.SerializerOP)
