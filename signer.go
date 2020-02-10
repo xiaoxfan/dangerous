@@ -87,17 +87,8 @@ func (self *Signer) SetDefault() {
 }
 
 func IsValidStruct(t interface{}) bool {
-	switch t.(type) {
-
-	case HMACAlgorithm:
-		return true
-
-	case SigningAlgorithm:
-		return true
-
-	default:
-		return false
-	}
+	_, ok := t.(Signature)
+	return ok
 }
 
 func (self *Signer) DeriveKey() ([]byte, error) {

@@ -10,7 +10,7 @@ var (
 	jws = JSONWebSignatureSerializer{Secret: "secret-key", Expires_in: 10}
 )
 
-func Test_algorithm(t *testing.T) {
+func TestAlgorithm(t *testing.T) {
 	for _, alg := range []string{"HS256", "HS384", "HS512", "none"} {
 		_jws := jws
 		_jws.AlgorithmName = alg
@@ -21,13 +21,13 @@ func Test_algorithm(t *testing.T) {
 	}
 }
 
-func Test_invalid_algorithm(t *testing.T) {
+func TestInvalidAlgorithm(t *testing.T) {
 	_jws := jws
 	_jws.AlgorithmName = "not exist"
 	_jws.Dumps("value")
 }
 
-func Test_algorithm_mismatch(t *testing.T) {
+func TestAlgorithmMismatch(t *testing.T) {
 	other := jws
 	other.AlgorithmName = "HS256"
 	signed, _ := other.Dumps("value")
@@ -37,7 +37,7 @@ func Test_algorithm_mismatch(t *testing.T) {
 }
 
 // library can not report more error.
-func Test_load_payload_exceptions(t *testing.T) {
+func TestLoadPayloadExceptions(t *testing.T) {
 	input := [][]string{
 		{"ab", `does not match`},
 		{"a.b", `does not match`},
@@ -56,7 +56,7 @@ func Test_load_payload_exceptions(t *testing.T) {
 
 }
 
-func Test_exp(t *testing.T) {
+func TestExp(t *testing.T) {
 	jws.Expires_in = 8
 	signed, _ := jws.TimedDumps("value")
 	_, _, err := jws.TimedLoads(string(signed))
@@ -73,11 +73,11 @@ func Test_exp(t *testing.T) {
 	}
 }
 
-func Test_return_header(t *testing.T) {
+func TestReturnHeader(t *testing.T) {
 
 }
 
-func Test_missing_exp(t *testing.T) {
+func TestMissingExp(t *testing.T) {
 	header := jws.TimedMakeHeader(map[string]interface{}{})
 	delete(header, "exp")
 	signed, _ := jws.Dumps("value", header)
@@ -89,7 +89,7 @@ func Test_missing_exp(t *testing.T) {
 
 }
 
-func Test_invalid_exp(t *testing.T) {
+func TestInvalidExp(t *testing.T) {
 	header := jws.TimedMakeHeader(map[string]interface{}{})
 	header["exp"] = -1
 	signed, _ := jws.Dumps("value", header)

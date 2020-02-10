@@ -12,10 +12,6 @@ func ByteCompare(a, b []byte) bool {
 	return bytes.Compare(a, b) == 0
 }
 
-func StrCompare(a, b string) bool {
-	return ByteCompare([]byte(a), []byte(b))
-}
-
 func ApplyKwargs(struct1 interface{}, kwargs map[string]interface{}) error {
 	values1 := reflect.ValueOf(struct1).Elem()
 	if values1.Type().Kind() != reflect.Struct {

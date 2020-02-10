@@ -12,10 +12,9 @@ import (
 
 var (
 	serializer = Serializer{Secret: "secret_key"}
-	value      = "value"
 )
 
-func Test_serializer(t *testing.T) {
+func TestSerializer(t *testing.T) {
 	dump, err := serializer.Dumps(value)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -25,7 +24,7 @@ func Test_serializer(t *testing.T) {
 	}
 }
 
-func Test_changed_value(t *testing.T) {
+func TestChangedValue(t *testing.T) {
 	type funcstring func(s string) string
 	for _, _func := range []funcstring{
 		func(s string) string { return strings.ToUpper(s) },
@@ -44,7 +43,7 @@ func Test_changed_value(t *testing.T) {
 	}
 }
 
-func Test_bad_signature_exception(t *testing.T) {
+func TestBadSignatureException(t *testing.T) {
 	dump, _ := serializer.Dumps(value)
 	bad_signed := dump[:len(dump)-1]
 	if _, err := serializer.Loads(string(bad_signed)); !strings.Contains(err.Error(), "BadSignature") {
@@ -52,7 +51,7 @@ func Test_bad_signature_exception(t *testing.T) {
 	}
 }
 
-func Test_bad_payload_exception(t *testing.T) {
+func TestBadPayloadException(t *testing.T) {
 	original, _ := serializer.Dumps(value)
 	payload, _ := RSplit(original, []byte("."))
 	bad := Signer{Secret: "secret_key", Salt: "itsdangerous"}.Sign(string(payload[:len(payload)-1]))
@@ -61,7 +60,7 @@ func Test_bad_payload_exception(t *testing.T) {
 	}
 }
 
-func Test_alt_salt(t *testing.T) {
+func TestAltSalt(t *testing.T) {
 	serializer.Salt = "fresh"
 	original, _ := serializer.Dumps("123")
 
@@ -76,7 +75,7 @@ func Test_alt_salt(t *testing.T) {
 	serializer.Salt = ""
 }
 
-func Test_signer_kwargs(t *testing.T) {
+func TestSignerKwargs(t *testing.T) {
 	_ser := Serializer{Secret: "secret_key", Signerkwargs: map[string]interface{}{"KeyDerivation": "hmac"}}
 	dump, err := _ser.Dumps(value)
 	if err != nil {
@@ -94,7 +93,7 @@ func Test_signer_kwargs(t *testing.T) {
 	}
 }
 
-func Test_fallback_signers(t *testing.T) {
+func TestFallbackSigners(t *testing.T) {
 	serializer := Serializer{Secret: "secret_key",
 		Signerkwargs: map[string]interface{}{"DigestMethod": sha256.New},
 	}
@@ -115,7 +114,7 @@ func Test_fallback_signers(t *testing.T) {
 	}
 }
 
-func Test_digests(t *testing.T) {
+func TestDigests(t *testing.T) {
 	factory := Serializer{Secret: "dev key", Salt: "dev salt"}
 	default_value, _ := factory.Dumps([]int{42})
 
@@ -143,7 +142,7 @@ func Test_digests(t *testing.T) {
 }
 
 // Timed
-func Test_max_age(t *testing.T) {
+func TestMaxAge(t *testing.T) {
 	signed, _ := serializer.TimedDumps(value)
 	_, err := serializer.TimedLoads(string(signed), 10)
 	if err != nil {
@@ -160,7 +159,7 @@ func Test_max_age(t *testing.T) {
 
 }
 
-func Test_timed_digests(t *testing.T) {
+func TestTimedDigests(t *testing.T) {
 	tser := Serializer{Secret: "dev key", Salt: "dev salt"}
 	tryload := `"value".Xjq_FQ._7SrxmrHFESAmzLxOP73vbITuxL0BnWaZJoj8Pxaux8`
 	payload, err := tser.TimedLoads(tryload, 0)
@@ -184,7 +183,7 @@ func Test_timed_digests(t *testing.T) {
 }
 
 // Url
-func Test_url_digests(t *testing.T) {
+func TestUrlDigests(t *testing.T) {
 	factory := Serializer{Secret: "dev key", Salt: "dev salt"}
 	default_value, _ := factory.URLSafeDumps(value)
 
@@ -214,7 +213,7 @@ func Test_url_digests(t *testing.T) {
 	// InZhbHVlIg.0yf-GPdnwCJD-e3Ies-TMi6JlI0nb4lHaogQzcWNIR7iRZ8C-xus35bkrbh4VvzdBK2_gN8Pcqda6ONNwUQXHw sha512
 }
 
-func Test_timedurl_digests(t *testing.T) {
+func TestTimedurlDigests(t *testing.T) {
 	tser := Serializer{Secret: "dev key", Salt: "dev salt"}
 
 	tryload := `InZhbHVlIg.Xjz2MQ.jMZtbnQCgTRbNpCOwQfOq6GW2qM`
