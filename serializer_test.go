@@ -146,7 +146,7 @@ func TestMaxAge(t *testing.T) {
 	signed, _ := serializer.TimedDumps(value)
 	_, err := serializer.TimedLoads(string(signed), 10)
 	if err != nil {
-		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
+		t.Fatalf("Unexpected error occurred when loads data. Error:%s", err)
 	}
 	time.Sleep(2 * time.Second)
 	payload, err2 := serializer.TimedLoads(string(signed), 1)

@@ -37,16 +37,16 @@ func RSplit(b, sep []byte) ([]byte, []byte) {
 }
 
 func Concentrate(b ...interface{}) ([]byte, error) {
-	var bytes_ bytes.Buffer
+	var _bytes bytes.Buffer
 
 	for _, itf := range b {
 		_byte, ok := itf.([]byte)
 		if !ok {
-			return bytes_.Bytes(), fmt.Errorf("Concentrate bytes only!")
+			return _bytes.Bytes(), fmt.Errorf("Concentrate bytes only")
 		}
-		bytes_.Write(_byte)
+		_bytes.Write(_byte)
 	}
-	return bytes_.Bytes(), nil
+	return _bytes.Bytes(), nil
 }
 
 func Compress(src []byte) []byte {

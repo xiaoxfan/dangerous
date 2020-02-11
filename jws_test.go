@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	jws = JSONWebSignatureSerializer{Secret: "secret-key", Expires_in: 10}
+	jws = JSONWebSignatureSerializer{Secret: "secret-key", ExpiresIn: 10}
 )
 
 func TestAlgorithm(t *testing.T) {
@@ -50,18 +50,18 @@ func TestLoadPayloadExceptions(t *testing.T) {
 		signed := signer.Sign(v[0])
 		_, _, err := jws.Loads(string(signed))
 		if !strings.Contains(err.Error(), v[1]) {
-			t.Fatalf("Unexpected error occured, we expect %s", v[1])
+			t.Fatalf("Unexpected error occurred, we expect %s", v[1])
 		}
 	}
 
 }
 
 func TestExp(t *testing.T) {
-	jws.Expires_in = 8
+	jws.ExpiresIn = 8
 	signed, _ := jws.TimedDumps("value")
 	_, _, err := jws.TimedLoads(string(signed))
 	if err != nil {
-		t.Fatalf("Unexpected error occured when loads data. Error:%s", err.Error())
+		t.Fatalf("Unexpected error occurred when loads data. Error:%s", err.Error())
 	}
 	time.Sleep(10 * time.Second)
 	_, value, err2 := jws.TimedLoads(string(signed))

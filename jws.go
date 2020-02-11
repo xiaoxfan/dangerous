@@ -9,58 +9,58 @@ import (
 )
 
 var (
-	Jws_algorithms = map[string]interface{}{
+	JwsAlgorithms = map[string]interface{}{
 		"HS256": HMACAlgorithm{DigestMethod: sha256.New},
 		"HS384": HMACAlgorithm{DigestMethod: sha512.New384},
 		"HS512": HMACAlgorithm{DigestMethod: sha512.New},
 		"none":  SigningAlgorithm{},
 	}
 
-	Default_algorithm = "HS512"
+	DefaultAlgorithm = "HS512"
 
-	Default_serializer = Json{}
+	DefaultSerializer = JSON{}
 
-	DEFAULT_EXPIRES_IN int64 = 3600
+	DefaultExpiresIn int64 = 3600
 )
 
 type JSONWebSignatureSerializer struct {
 	serializer    Serializer
 	Secret        string
 	Salt          string
-	Serializer    JsonAPI
+	Serializer    JSONAPI
 	Signer        Signer
 	Signerkwargs  map[string]interface{}
 	AlgorithmName string
 	Algorithm     Signature
-	Expires_in    int64
+	ExpiresIn     int64
 }
 
-func (self *JSONWebSignatureSerializer) SetDefault() {
-	if self.AlgorithmName == "" {
-		self.AlgorithmName = Default_algorithm
+func (jwss *JSONWebSignatureSerializer) SetDefault() {
+	if jwss.AlgorithmName == "" {
+		jwss.AlgorithmName = DefaultAlgorithm
 	}
-	if self.Expires_in == 0 {
-		self.Expires_in = DEFAULT_EXPIRES_IN
+	if jwss.ExpiresIn == 0 {
+		jwss.ExpiresIn = DefaultExpiresIn
 	}
-	alg := Jws_algorithms[self.AlgorithmName]
+	alg := JwsAlgorithms[jwss.AlgorithmName]
 	if alg == nil {
-		self.AlgorithmName = Default_algorithm
-		alg = Jws_algorithms[self.AlgorithmName]
+		jwss.AlgorithmName = DefaultAlgorithm
+		alg = JwsAlgorithms[jwss.AlgorithmName]
 		fmt.Println("Invalid_algorithm! Now we will use default algorithm. HS256.")
 	}
-	self.Algorithm = alg.(Signature)
-	self.Serializer = Json{}
+	jwss.Algorithm = alg.(Signature)
+	jwss.Serializer = JSON{}
 	ser := &Serializer{
-		Secret:       self.Secret,
-		Salt:         self.Salt,
-		SerializerOP: self.Serializer,
-		Signer:       self.Signer,
-		Signerkwargs: self.Signerkwargs}
+		Secret:       jwss.Secret,
+		Salt:         jwss.Salt,
+		SerializerOP: jwss.Serializer,
+		Signer:       jwss.Signer,
+		Signerkwargs: jwss.Signerkwargs}
 	ser.SetDefault()
-	self.serializer = (*ser)
+	jwss.serializer = (*ser)
 }
 
-func (self JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{}, interface{}, error) {
+func (jwss JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{}, interface{}, error) {
 	null := []byte("")
 	sep := []byte(".")
 	if !bytes.Contains(payload, sep) {
@@ -68,17 +68,17 @@ func (self JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{},
 	}
 	v := bytes.SplitN(payload, []byte("."), 2)
 
-	base64d_header, base64d_payload := v[0], v[1]
+	base64dheader, base64dpayload := v[0], v[1]
 
-	json_header, err := B64decode(base64d_header)
+	JSONheader, err := B64decode(base64dheader)
 	if err != nil {
-		return json_header, null, fmt.Errorf("Could not base64 decode the header because of an exception")
+		return JSONheader, null, fmt.Errorf("Could not base64 decode the header because of an exception")
 	}
-	json_payload, err := B64decode(base64d_payload)
+	JSONpayload, err := B64decode(base64dpayload)
 	if err != nil {
-		return null, json_payload, fmt.Errorf("Could not base64 decode the payload because of an exception")
+		return null, JSONpayload, fmt.Errorf("Could not base64 decode the payload because of an exception")
 	}
-	header, err := self.serializer.LoadPayload(json_header)
+	header, err := jwss.serializer.LoadPayload(JSONheader)
 	if err != nil {
 		return header, null, fmt.Errorf("Could not unserialize header because it was malformed")
 	}
@@ -86,133 +86,133 @@ func (self JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{},
 	if !ok {
 		return header, null, fmt.Errorf("Header payload is not a JSON object")
 	}
-	payloadr, err := self.serializer.LoadPayload(json_payload)
+	payloadr, err := jwss.serializer.LoadPayload(JSONpayload)
 	return header, payloadr, err
 }
 
-func (self JSONWebSignatureSerializer) DumpPayload(header, obj interface{}) ([]byte, error) {
-	h, err := self.Serializer.(JsonAPI).Dump(header)
+func (jwss JSONWebSignatureSerializer) DumpPayload(header, obj interface{}) ([]byte, error) {
+	h, err := jwss.Serializer.(JSONAPI).Dump(header)
 	if err != nil {
-		return blank_bytes, err
+		return BlankBytes, err
 	}
-	base64d_header := B64encode([]byte(h))
-	p, err := self.Serializer.(JsonAPI).Dump(obj)
+	base64dheader := B64encode([]byte(h))
+	p, err := jwss.Serializer.(JSONAPI).Dump(obj)
 	if err != nil {
-		return blank_bytes, err
+		return BlankBytes, err
 	}
-	base64d_payload := B64encode([]byte(p))
+	base64dpayload := B64encode([]byte(p))
 	sep := WantBytes(".")
-	result, err := Concentrate(WantBytes(base64d_header), sep, WantBytes(base64d_payload))
+	result, err := Concentrate(WantBytes(base64dheader), sep, WantBytes(base64dpayload))
 	return result, err
 }
 
-func (self JSONWebSignatureSerializer) MakeSigner() Signer {
-	key_derivation := ""
-	if self.Salt == "" {
-		key_derivation = "none"
+func (jwss JSONWebSignatureSerializer) MakeSigner() Signer {
+	keyderivation := ""
+	if jwss.Salt == "" {
+		keyderivation = "none"
 	}
 	SIGNER := &Signer{
-		Secret:        self.Secret,
-		Salt:          self.Salt,
+		Secret:        jwss.Secret,
+		Salt:          jwss.Salt,
 		Sep:           ".",
-		KeyDerivation: key_derivation,
-		Algorithm:     self.Algorithm,
+		KeyDerivation: keyderivation,
+		Algorithm:     jwss.Algorithm,
 	}
 	SIGNER.SetDefault()
 	return (*SIGNER)
 
 }
 
-func (self JSONWebSignatureSerializer) MakeHeader(header_fields map[string]interface{}) map[string]interface{} {
-	header_fields["alg"] = self.AlgorithmName
-	return header_fields
+func (jwss JSONWebSignatureSerializer) MakeHeader(headerfields map[string]interface{}) map[string]interface{} {
+	headerfields["alg"] = jwss.AlgorithmName
+	return headerfields
 
 }
 
-func (self JSONWebSignatureSerializer) Dumps(obj interface{}, args ...interface{}) ([]byte, error) {
-	(&self).SetDefault()
-	header_fields := map[string]interface{}{}
+func (jwss JSONWebSignatureSerializer) Dumps(obj interface{}, args ...interface{}) ([]byte, error) {
+	(&jwss).SetDefault()
+	headerfields := map[string]interface{}{}
 	if len(args) == 1 {
-		header_fields, _ = args[0].(map[string]interface{})
+		headerfields, _ = args[0].(map[string]interface{})
 	}
-	header := self.MakeHeader(header_fields)
-	signer := self.MakeSigner()
-	payload, err := self.DumpPayload(header, obj)
+	header := jwss.MakeHeader(headerfields)
+	signer := jwss.MakeSigner()
+	payload, err := jwss.DumpPayload(header, obj)
 	if err != nil {
 		return payload, err
 	}
 	return signer.Sign(string(payload)), nil
 }
 
-func (self JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}, error) {
-	(&self).SetDefault()
-	signer := self.MakeSigner()
+func (jwss JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}, error) {
+	(&jwss).SetDefault()
+	signer := jwss.MakeSigner()
 	b, err := signer.UnSign(s)
 	if err != nil {
 		return nil, nil, err
 	}
-	h, payload, err := self.LoadPayload(b)
+	h, payload, err := jwss.LoadPayload(b)
 	header, _ := h.(map[string]interface{})
-	if header["alg"].(string) != self.AlgorithmName {
+	if header["alg"].(string) != jwss.AlgorithmName {
 		err = fmt.Errorf(`BadHeader: Algorithm mismatch, header:%v, payload=%v`, header, payload)
 	}
 	return header, payload, err
 }
 
-func (self JSONWebSignatureSerializer) TimedMakeHeader(header_fields map[string]interface{}) map[string]interface{} {
-	header := self.MakeHeader(header_fields)
-	iat := self.now()
-	exp := iat + self.Expires_in
+func (jwss JSONWebSignatureSerializer) TimedMakeHeader(headerfields map[string]interface{}) map[string]interface{} {
+	header := jwss.MakeHeader(headerfields)
+	iat := jwss.now()
+	exp := iat + jwss.ExpiresIn
 	header["iat"] = iat
 	header["exp"] = exp
 	return header
 }
 
-func (self JSONWebSignatureSerializer) TimedDumps(obj interface{}, args ...interface{}) ([]byte, error) {
-	(&self).SetDefault()
-	header_fields := map[string]interface{}{}
+func (jwss JSONWebSignatureSerializer) TimedDumps(obj interface{}, args ...interface{}) ([]byte, error) {
+	(&jwss).SetDefault()
+	headerfields := map[string]interface{}{}
 	if len(args) == 1 {
-		header_fields, _ = args[0].(map[string]interface{})
+		headerfields, _ = args[0].(map[string]interface{})
 		fmt.Println("get")
 	}
-	header := self.TimedMakeHeader(header_fields)
-	return self.Dumps(obj, header)
+	header := jwss.TimedMakeHeader(headerfields)
+	return jwss.Dumps(obj, header)
 }
 
-func (self JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interface{}, interface{}, error) {
-	(&self).SetDefault()
-	header, payload, err := self.Loads(s)
+func (jwss JSONWebSignatureSerializer) TimedLoads(s string) (map[string]interface{}, interface{}, error) {
+	(&jwss).SetDefault()
+	header, payload, err := jwss.Loads(s)
 	if err != nil {
 		return nil, payload, err
 	}
 	headers := header.(map[string]interface{})
 	if ok := headers["exp"]; ok == nil {
-		return headers, payload, fmt.Errorf("BadSignature-Missing expiry date.")
+		return headers, payload, fmt.Errorf("BadSignature-Missing expiry date")
 	}
 
-	int_date_error := fmt.Errorf(`BadHeader-Expiry date is not an IntDate, payload:%v`, payload)
+	IntDateError := fmt.Errorf(`BadHeader-Expiry date is not an IntDate, payload:%v`, payload)
 
 	expfloat, ok := headers["exp"].(float64)
 	if !ok {
-		return headers, payload, int_date_error
+		return headers, payload, IntDateError
 	}
 	exp := int64(expfloat)
 	if exp < 0 {
-		return headers, payload, int_date_error
+		return headers, payload, IntDateError
 	}
 
-	if exp < self.now() {
-		err := fmt.Errorf(`Signature expired, expired at %s.`, self.Get_issue_date(exp))
+	if exp < jwss.now() {
+		err := fmt.Errorf(`Signature expired, expired at %s`, jwss.GetIssueDate(exp))
 		return headers, payload, err
 	}
 	return headers, payload, nil
 
 }
 
-func (self JSONWebSignatureSerializer) now() int64 {
+func (jwss JSONWebSignatureSerializer) now() int64 {
 	return time.Now().UTC().Unix()
 }
 
-func (self JSONWebSignatureSerializer) Get_issue_date(t int64) string {
+func (jwss JSONWebSignatureSerializer) GetIssueDate(t int64) string {
 	return fmt.Sprintf("%s", time.Unix(t, 0).UTC())
 }

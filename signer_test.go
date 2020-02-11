@@ -120,7 +120,7 @@ func Test_max_age(t *testing.T) {
 	signed := signer.SignTimestamp(value)
 	_, _, err := signer.UnSignTimestamp(string(signed), 2)
 	if err != nil {
-		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
+		t.Fatalf("Unexpected error occurred when loads data. Error:%s", err)
 	}
 	time.Sleep(2 * time.Second)
 	payload, _, err2 := signer.UnSignTimestamp(string(signed), 1)
@@ -144,7 +144,7 @@ func Test_timestamp_missing(t *testing.T) {
 	signed := signer.Sign(value)
 	_, _, err := signer.UnSignTimestamp(string(signed), 10)
 	if !strings.Contains(err.Error(), "BadTimeSignature") {
-		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
+		t.Fatalf("Unexpected error occurred when loads data. Error:%s", err)
 	}
 }
 
@@ -152,6 +152,6 @@ func Test_malformed_timestamp(t *testing.T) {
 	signed := signer.Sign(value + ".____________")
 	_, _, err := signer.UnSignTimestamp(string(signed), 10)
 	if !strings.Contains(err.Error(), "SignatureExpired") {
-		t.Fatalf("Unexpected error occured when loads data. Error:%s", err)
+		t.Fatalf("Unexpected error occurred when loads data. Error:%s", err)
 	}
 }

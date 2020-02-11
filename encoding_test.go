@@ -59,7 +59,7 @@ func TestString2Bytes(t *testing.T) {
 	}
 	defer func() {
 		if r := recover(); r != nil {
-			t.Fatalf("Recovered in panic:%s, this occured in function `WantBytes`", r)
+			t.Fatalf("Recovered in panic:%s, this occurred in function `WantBytes`", r)
 		}
 	}()
 }

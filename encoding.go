@@ -17,7 +17,7 @@ func WantBytes(str string, chartype ...interface{}) []byte {
 	}
 	r, err := charset.NewReader(strings.NewReader(str), types)
 	if err != nil && !strings.Contains(err.Error(), "EOF") {
-		panic(fmt.Sprintf("Erorr occured when using WantBytes, error:%s input:%s", err.Error(), str))
+		panic(fmt.Sprintf("Erorr occurred when using WantBytes, error:%s input:%s", err.Error(), str))
 	} else if err != nil && strings.Contains(err.Error(), "EOF") {
 		return []byte{}
 	}
@@ -64,4 +64,4 @@ func Int2Bytes(_int int64) (bs []byte) {
 	return
 }
 
-var Base64_alphabet = WantBytes("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_=")
+var Base64Alphabet = WantBytes("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_=")
