@@ -41,14 +41,6 @@ func (ser *Serializer) SetDefault() {
 
 }
 
-func (ser Serializer) LoadPayload(payload []byte) (interface{}, error) {
-	return ser.SerializerOP.Load(payload)
-}
-
-func (ser Serializer) DumpPayload(vx interface{}) (string, error) {
-	return ser.SerializerOP.Dump(vx)
-}
-
 func (ser Serializer) IterUnSigners() []interface{} {
 	allfallback := make([]interface{}, len(ser.FallbackSigners)+1)
 	allfallback[0] = ser.Signer

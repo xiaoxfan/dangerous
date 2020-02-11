@@ -24,12 +24,10 @@ var (
 )
 
 type JSONWebSignatureSerializer struct {
-	serializer    Serializer
 	Secret        string
 	Salt          string
 	Serializer    JSONAPI
 	Signer        Signer
-	Signerkwargs  map[string]interface{}
 	AlgorithmName string
 	Algorithm     Signature
 	ExpiresIn     int64
@@ -50,21 +48,12 @@ func (jwss *JSONWebSignatureSerializer) SetDefault() {
 	}
 	jwss.Algorithm = alg.(Signature)
 	jwss.Serializer = JSON{}
-	ser := &Serializer{
-		Secret:       jwss.Secret,
-		Salt:         jwss.Salt,
-		SerializerOP: jwss.Serializer,
-		Signer:       jwss.Signer,
-		Signerkwargs: jwss.Signerkwargs}
-	ser.SetDefault()
-	jwss.serializer = (*ser)
 }
 
 func (jwss JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{}, interface{}, error) {
-	null := []byte("")
 	sep := []byte(".")
 	if !bytes.Contains(payload, sep) {
-		return null, null, fmt.Errorf("BadPayload: No '.' found in value, %s", payload)
+		return BlankBytes, BlankBytes, fmt.Errorf("BadPayload: No '.' found in value, %s", payload)
 	}
 	v := bytes.SplitN(payload, []byte("."), 2)
 
@@ -72,21 +61,21 @@ func (jwss JSONWebSignatureSerializer) LoadPayload(payload []byte) (interface{},
 
 	JSONheader, err := B64decode(base64dheader)
 	if err != nil {
-		return JSONheader, null, fmt.Errorf("Could not base64 decode the header because of an exception")
+		return JSONheader, BlankBytes, fmt.Errorf("Could not base64 decode the header because of an exception")
 	}
 	JSONpayload, err := B64decode(base64dpayload)
 	if err != nil {
-		return null, JSONpayload, fmt.Errorf("Could not base64 decode the payload because of an exception")
+		return BlankBytes, JSONpayload, fmt.Errorf("Could not base64 decode the payload because of an exception")
 	}
-	header, err := jwss.serializer.LoadPayload(JSONheader)
+	header, err := jwss.Serializer.Load(JSONheader)
 	if err != nil {
-		return header, null, fmt.Errorf("Could not unserialize header because it was malformed")
+		return header, BlankBytes, fmt.Errorf("Could not unserialize header because it was malformed")
 	}
 	_, ok := header.(map[string]interface{})
 	if !ok {
-		return header, null, fmt.Errorf("Header payload is not a JSON object")
+		return header, BlankBytes, fmt.Errorf("Header payload is not a JSON object")
 	}
-	payloadr, err := jwss.serializer.LoadPayload(JSONpayload)
+	payloadr, err := jwss.Serializer.Load(JSONpayload)
 	return header, payloadr, err
 }
 
@@ -152,6 +141,9 @@ func (jwss JSONWebSignatureSerializer) Loads(s string) (interface{}, interface{}
 		return nil, nil, err
 	}
 	h, payload, err := jwss.LoadPayload(b)
+	if err != nil {
+		return h, payload, err
+	}
 	header, _ := h.(map[string]interface{})
 	if header["alg"].(string) != jwss.AlgorithmName {
 		err = fmt.Errorf(`BadHeader: Algorithm mismatch, header:%v, payload=%v`, header, payload)
