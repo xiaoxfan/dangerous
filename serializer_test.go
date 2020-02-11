@@ -45,8 +45,8 @@ func TestChangedValue(t *testing.T) {
 
 func TestBadSignatureException(t *testing.T) {
 	dump, _ := serializer.Dumps(value)
-	bad_signed := dump[:len(dump)-1]
-	if _, err := serializer.Loads(string(bad_signed)); !strings.Contains(err.Error(), "BadSignature") {
+	badsigned := dump[:len(dump)-1]
+	if _, err := serializer.Loads(string(badsigned)); !strings.Contains(err.Error(), "BadSignature") {
 		t.Fatalf("Loading failed, because of unexpected error:`%s`. Expected:BadSignature.", err.Error())
 	}
 }
@@ -116,28 +116,28 @@ func TestFallbackSigners(t *testing.T) {
 
 func TestDigests(t *testing.T) {
 	factory := Serializer{Secret: "dev key", Salt: "dev salt"}
-	default_value, _ := factory.Dumps([]int{42})
+	DefaultValue, _ := factory.Dumps([]int{42})
 
 	factory.Signerkwargs = map[string]interface{}{"DigestMethod": sha1.New}
-	sha1_value, _ := factory.Dumps([]int{42})
+	Sha1Value, _ := factory.Dumps([]int{42})
 
 	factory.Signerkwargs = map[string]interface{}{"DigestMethod": sha256.New}
-	sha256_value, _ := factory.Dumps([]int{42})
+	Sha256Value, _ := factory.Dumps([]int{42})
 
 	factory.Signerkwargs = map[string]interface{}{"DigestMethod": sha512.New}
-	sha512_value, _ := factory.Dumps([]int{42})
+	Sha512Value, _ := factory.Dumps([]int{42})
 
-	if !bytes.Equal(default_value, sha256_value) {
-		t.Fatalf("default_value does not equal to sha256_value.")
+	if !bytes.Equal(DefaultValue, Sha256Value) {
+		t.Fatalf("DefaultValue does not equal to Sha256Value.")
 	}
-	if !bytes.Equal(sha1_value, []byte("[42].-9cNi0CxsSB3hZPNCe9a2eEs1ZM")) {
-		t.Fatalf("sha1_value does not equal to `[42].-9cNi0CxsSB3hZPNCe9a2eEs1ZM`.")
+	if !bytes.Equal(Sha1Value, []byte("[42].-9cNi0CxsSB3hZPNCe9a2eEs1ZM")) {
+		t.Fatalf("Sha1Value does not equal to `[42].-9cNi0CxsSB3hZPNCe9a2eEs1ZM`.")
 	}
-	if !bytes.Equal(sha256_value, []byte("[42].u5jm88LwiD3aYOixoxwYUWacbKYcSnVL8cnS-4lgb4U")) {
-		t.Fatalf("sha256_value does not equal to `[42].u5jm88LwiD3aYOixoxwYUWacbKYcSnVL8cnS-4lgb4U`.")
+	if !bytes.Equal(Sha256Value, []byte("[42].u5jm88LwiD3aYOixoxwYUWacbKYcSnVL8cnS-4lgb4U")) {
+		t.Fatalf("Sha256Value does not equal to `[42].u5jm88LwiD3aYOixoxwYUWacbKYcSnVL8cnS-4lgb4U`.")
 	}
-	if !bytes.Equal(sha512_value, []byte("[42].MKCz_0nXQqv7wKpfHZcRtJRmpT2T5uvs9YQsJEhJimqxc9bCLxG31QzS5uC8OVBI1i6jyOLAFNoKaF5ckO9L5Q")) {
-		t.Fatalf("sha512_value does not equal to `[42].MKCz_0nXQqv7wKpfHZcRtJRmpT2T5uvs9YQsJEhJimqxc9bCLxG31QzS5uC8OVBI1i6jyOLAFNoKaF5ckO9L5Q`.")
+	if !bytes.Equal(Sha512Value, []byte("[42].MKCz_0nXQqv7wKpfHZcRtJRmpT2T5uvs9YQsJEhJimqxc9bCLxG31QzS5uC8OVBI1i6jyOLAFNoKaF5ckO9L5Q")) {
+		t.Fatalf("Sha512Value does not equal to `[42].MKCz_0nXQqv7wKpfHZcRtJRmpT2T5uvs9YQsJEhJimqxc9bCLxG31QzS5uC8OVBI1i6jyOLAFNoKaF5ckO9L5Q`.")
 	}
 }
 
@@ -185,28 +185,28 @@ func TestTimedDigests(t *testing.T) {
 // Url
 func TestUrlDigests(t *testing.T) {
 	factory := Serializer{Secret: "dev key", Salt: "dev salt"}
-	default_value, _ := factory.URLSafeDumps(value)
+	DefaultValue, _ := factory.URLSafeDumps(value)
 
 	factory.Signerkwargs = map[string]interface{}{"DigestMethod": sha1.New}
-	sha1_value, _ := factory.URLSafeDumps(value)
+	Sha1Value, _ := factory.URLSafeDumps(value)
 
 	factory.Signerkwargs = map[string]interface{}{"DigestMethod": sha256.New}
-	sha256_value, _ := factory.URLSafeDumps(value)
+	Sha256Value, _ := factory.URLSafeDumps(value)
 
 	factory.Signerkwargs = map[string]interface{}{"DigestMethod": sha512.New}
-	sha512_value, _ := factory.URLSafeDumps(value)
+	Sha512Value, _ := factory.URLSafeDumps(value)
 
-	if !bytes.Equal(default_value, sha256_value) {
-		t.Fatalf("default_value does not equal to sha256_value.")
+	if !bytes.Equal(DefaultValue, Sha256Value) {
+		t.Fatalf("DefaultValue does not equal to Sha256Value.")
 	}
-	if !bytes.Equal(sha1_value, []byte("InZhbHVlIg.zsqEp7ga91kJ6rH3MKOepF1Iv9s")) {
-		t.Fatalf("sha1_value does not equal to `InZhbHVlIg.zsqEp7ga91kJ6rH3MKOepF1Iv9s`.")
+	if !bytes.Equal(Sha1Value, []byte("InZhbHVlIg.zsqEp7ga91kJ6rH3MKOepF1Iv9s")) {
+		t.Fatalf("Sha1Value does not equal to `InZhbHVlIg.zsqEp7ga91kJ6rH3MKOepF1Iv9s`.")
 	}
-	if !bytes.Equal(sha256_value, []byte("InZhbHVlIg.lv0F8SGBCKGZEZthKqM09WDDjfZPdmMprb0VrkLerE4")) {
-		t.Fatalf("sha256_value does not equal to `InZhbHVlIg.lv0F8SGBCKGZEZthKqM09WDDjfZPdmMprb0VrkLerE4`.")
+	if !bytes.Equal(Sha256Value, []byte("InZhbHVlIg.lv0F8SGBCKGZEZthKqM09WDDjfZPdmMprb0VrkLerE4")) {
+		t.Fatalf("Sha256Value does not equal to `InZhbHVlIg.lv0F8SGBCKGZEZthKqM09WDDjfZPdmMprb0VrkLerE4`.")
 	}
-	if !bytes.Equal(sha512_value, []byte("InZhbHVlIg.0yf-GPdnwCJD-e3Ies-TMi6JlI0nb4lHaogQzcWNIR7iRZ8C-xus35bkrbh4VvzdBK2_gN8Pcqda6ONNwUQXHw")) {
-		t.Fatalf("sha512_value does not equal to `InZhbHVlIg.0yf-GPdnwCJD-e3Ies-TMi6JlI0nb4lHaogQzcWNIR7iRZ8C-xus35bkrbh4VvzdBK2_gN8Pcqda6ONNwUQXHw`.")
+	if !bytes.Equal(Sha512Value, []byte("InZhbHVlIg.0yf-GPdnwCJD-e3Ies-TMi6JlI0nb4lHaogQzcWNIR7iRZ8C-xus35bkrbh4VvzdBK2_gN8Pcqda6ONNwUQXHw")) {
+		t.Fatalf("Sha512Value does not equal to `InZhbHVlIg.0yf-GPdnwCJD-e3Ies-TMi6JlI0nb4lHaogQzcWNIR7iRZ8C-xus35bkrbh4VvzdBK2_gN8Pcqda6ONNwUQXHw`.")
 	}
 	// InZhbHVlIg.zsqEp7ga91kJ6rH3MKOepF1Iv9s sha1
 	// InZhbHVlIg.lv0F8SGBCKGZEZthKqM09WDDjfZPdmMprb0VrkLerE4 sha256

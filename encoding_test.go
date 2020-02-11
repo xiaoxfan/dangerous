@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	valid_bytes = []struct {
+	ValidBytes = []struct {
 		in  string
 		out []byte
 	}{
@@ -23,7 +23,7 @@ var (
 		{"테스트", []byte{237, 133, 140, 236, 138, 164, 237, 138, 184}},
 	}
 
-	valid_b64 = []struct {
+	ValidB64 = []struct {
 		in    []byte
 		out   []byte
 		state bool
@@ -39,7 +39,7 @@ var (
 		{[]byte(`{}:><>?`), []byte(`e306Pjw+Pw==`), true},
 	}
 
-	valid_intbyte = []struct {
+	ValidIntByte = []struct {
 		_int  int64
 		_byte []byte
 		state bool
@@ -52,7 +52,7 @@ var (
 )
 
 func TestString2Bytes(t *testing.T) {
-	for _, valid := range valid_bytes {
+	for _, valid := range ValidBytes {
 		if !bytes.Equal(valid.out, WantBytes(valid.in)) {
 			t.Fatalf("Convert string to bytes failded, Input:('%s')", valid.in)
 		}
@@ -65,7 +65,7 @@ func TestString2Bytes(t *testing.T) {
 }
 
 func TestB64(t *testing.T) {
-	for _, valid := range valid_b64 {
+	for _, valid := range ValidB64 {
 		if result, err := B64decode(valid.out); err == nil {
 			if bytes.Equal(result, valid.in) != valid.state {
 				t.Fatalf("Base64 decode failed, Input:%s", string(valid.out))
@@ -81,7 +81,7 @@ func TestB64(t *testing.T) {
 }
 
 func TestI2B(t *testing.T) {
-	for _, valid := range valid_intbyte {
+	for _, valid := range ValidIntByte {
 		if result := Int2Bytes(valid._int); bytes.Equal(result, valid._byte) != valid.state {
 			t.Fatalf("Convert Int to Bytes failed, Input:%d.", valid._int)
 		}
@@ -89,7 +89,7 @@ func TestI2B(t *testing.T) {
 }
 
 func TestB2I(t *testing.T) {
-	for _, valid := range valid_intbyte {
+	for _, valid := range ValidIntByte {
 		if result := Bytes2Int(valid._byte); (result == valid._int) != valid.state {
 			t.Fatalf("Convert Bytes to Int failed, Input:%v, Output:%d, Excepted:%d.", valid._byte, result, valid._int)
 		}

@@ -37,8 +37,8 @@ func Test_no_separator(t *testing.T) {
 func Test_broken_signature(t *testing.T) {
 	signed := signer.Sign(value)
 	signed = signed[:len(signed)-1]
-	_, bad_sig := RSplit(signed, []byte(DefaultSep))
-	if signer.VerifySignature([]byte(value), bad_sig) {
+	_, badsig := RSplit(signed, []byte(DefaultSep))
+	if signer.VerifySignature([]byte(value), badsig) {
 		t.Fatalf("Verify Signature failed.")
 	}
 	if _, err := signer.UnSign(string(signed)); !strings.Contains(err.Error(), "BadSignature") {
