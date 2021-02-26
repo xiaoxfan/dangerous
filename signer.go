@@ -3,7 +3,7 @@ package dangerous
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha256"
+	"crypto/sha1"
 	"fmt"
 	"hash"
 	"time"
@@ -79,7 +79,7 @@ func (signer *Signer) SetDefault() {
 		signer.KeyDerivation = "django-concat"
 	}
 	if signer.DigestMethod == nil {
-		signer.DigestMethod = sha256.New
+		signer.DigestMethod = sha1.New
 	}
 	if !IsValidStruct(signer.Algorithm) {
 		signer.Algorithm = HMACAlgorithm{DigestMethod: signer.DigestMethod}
