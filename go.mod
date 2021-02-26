@@ -1,4 +1,4 @@
-module github.com/kcorlidy/dangerous
+module github.com/xiaofan/dangerous
 
 go 1.13
 
