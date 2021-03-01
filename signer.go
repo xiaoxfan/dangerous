@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	BlankBytes = []byte("")
-	DefaultSep = "."
+	BlankBytes          = []byte("")
+	DefaultSep          = "."
+	DefaultDigestMethod = sha1.New
 )
 
 type Signature interface {
@@ -79,7 +80,7 @@ func (signer *Signer) SetDefault() {
 		signer.KeyDerivation = "django-concat"
 	}
 	if signer.DigestMethod == nil {
-		signer.DigestMethod = sha1.New
+		signer.DigestMethod = DefaultDigestMethod
 	}
 	if !IsValidStruct(signer.Algorithm) {
 		signer.Algorithm = HMACAlgorithm{DigestMethod: signer.DigestMethod}
